@@ -1,0 +1,67 @@
+
+library(mltools)
+library(caTools)
+library(DMwR)
+library(data.table)
+claim <- read.csv("claims.csv", header = TRUE)
+
+
+#Feature Engineered 
+claim_sub <- subset(claim, select = -c(Month,WeekOfMonth,DayOfWeek,WeekOfMonth,Make,DayOfWeekClaimed,MonthClaimed,WeekOfMonthClaimed,
+                                       PolicyType,VehiclePrice,PolicyNumber,RepNumber,DriverRating,Days_Policy_Claim,PastNumberOfClaims,AgeOfVehicle,
+                                       AgeOfPolicyHolder,PoliceReportFiled,WitnessPresent,NumberOfSuppliments,NumberOfCars,Year,Days_Policy_Accident))
+
+table(claim_sub$FraudFound_P)
+names(claim_sub)
+nrow(claim_sub)
+
+claim_sub$FraudFound_P <- as.factor(claim_sub$FraudFound_P)
+claim_Smote <- SMOTE(FraudFound_P ~ ., claim_sub, perc.over = 600,perc.under=118)
+
+table(claim_Smote$FraudFound_P)
+
+names(claim_Smote)
+sum(is.na(claim_Smote))
+nrow(claim_Smote)
+library(rpart)
+# Build a tree
+# I already figured these significant variables from my first iteration (not shown in this code for simplicity)
+decision.tree <- rpart(
+  FraudFound_P ~ .
+  , method="class"
+  , data=claim_Smote
+)
+
+
+library(rpart.plot)
+# Visualize the tree
+# 1 is good, 2 is bad
+prp(
+  decision.tree
+  , extra=1
+  , varlen=0
+  , faclen=0
+  , main="Decision Tree for Fraud claims"
+)
+
+
+new.data <- list(
+  AccidentArea='Rural'
+  , Sex='Male'
+  , MaritalStatus='Single'
+  , Age= 50
+  ,Fault='Third Party'
+  ,VehicleCategory = 'Sedan'
+  ,Deductible = 300
+  ,AgentType = 'Internal'
+  ,AddressChange_Claim = '4 to 8 years'
+  ,BasePolicy = 'Collision'
+)
+predict(decision.tree, new.data)
+
+save(decision.tree, file='decision_Tree_for_fraudclaims.RData')
+
+
+
+
+names(claim_sub)
